@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOCA2 360 - App Oficial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bocaOrange: '#F15A24',
+            bocaOrangeDark: '#D94816',
+            bocaDark: '#3A3A3A',
+            bocaGreen: '#7BA02B',
+            bocaBg: '#FBF9F6',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-200 flex justify-center items-center min-h-screen">
+
+  <div class="w-full max-w-md bg-bocaBg min-h-screen pb-28 font-sans shadow-2xl relative border-x border-gray-200">
+    
+    <!-- Header con Logo y Estado de Horario -->
+    <header class="p-4 bg-white shadow-sm sticky top-0 z-20 flex flex-col space-y-2">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+          <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center p-1 border border-gray-100 shadow-sm overflow-hidden">
+            <img src="logo.png" alt="BOCA2 360 Logo" class="object-contain h-full w-full" onerror="this.src='https://via.placeholder.com/80?text=BOCA2'">
+          </div>
+          <div>
+            <h1 class="font-black text-bocaDark text-lg tracking-tight leading-none">BOCA2 <span class="text-bocaOrange">360</span></h1>
+            <p class="text-[10px] text-gray-500 font-medium mt-0.5">Carnes, pastas y más...</p>
+            
+            <!-- Indicador de Horario y Rango visible -->
+            <div class="flex items-center gap-1.5 mt-1">
+              <div id="estado-restaurante" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                <!-- Se evalúa dinámicamente -->
+              </div>
+              <span id="texto-horario-rango" class="text-[10px] font-semibold text-gray-500"></span>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="toggleCarritoModal()" class="relative bg-orange-50 p-3 rounded-2xl text-bocaOrange hover:bg-orange-100 transition shadow-sm">
+          🛒
+          <span id="cart-count" class="absolute -top-1 -right-1 bg-bocaOrange text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow">0</span>
+        </button>
+      </div>
+
+      <div class="flex items-center space-x-1 text-[10px] text-gray-600 bg-gray-50 p-1.5 rounded-xl border border-gray-100">
+        <span class="text-bocaOrange">📍</span>
+        <p class="truncate font-medium">León: Maxi Pali Bypass 300m al sureste, frente a ECHAMORRO</p>
+      </div>
+    </header>
+
+    <!-- 1. SECCIÓN DE CATEGORÍAS (AHORA EN PRIMER LUGAR) -->
+    <div class="px-4 pt-4 pb-2">
+      <p class="text-[11px] font-bold text-bocaDark uppercase tracking-wider mb-2">Tiempos de Comida / Menú</p>
+      <div class="flex space-x-2 overflow-x-auto pb-1 no-scrollbar">
+        <button id="cat-todos" onclick="filtrarCategoria('todos')" class="bg-bocaOrange text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap transition">Todos</button>
+        <button id="cat-desayuno" onclick="filtrarCategoria('desayuno')" class="bg-white text-bocaDark px-3.5 py-2 rounded-xl text-xs font-bold border border-gray-100 whitespace-nowrap shadow-xs transition">🍳 Desayunos</button>
+        <button id="cat-almuerzo" onclick="filtrarCategoria('almuerzo')" class="bg-white text-bocaDark px-3.5 py-2 rounded-xl text-xs font-bold border border-gray-100 whitespace-nowrap shadow-xs transition">🥩 Almuerzos</button>
+        <button id="cat-cena" onclick="filtrarCategoria('cena')" class="bg-white text-bocaDark px-3.5 py-2 rounded-xl text-xs font-bold border border-gray-100 whitespace-nowrap shadow-xs transition">🌙 Cenas</button>
+        <button id="cat-promos" onclick="filtrarCategoria('promos')" class="bg-white text-bocaDark px-3.5 py-2 rounded-xl text-xs font-bold border border-gray-100 whitespace-nowrap shadow-xs transition">🔥 Promociones</button>
+      </div>
+    </div>
+
+    <!-- 2. BUSCADOR -->
+    <div class="px-4 pb-2">
+      <input type="text" id="searchInput" onkeyup="filtrarProductos()" placeholder="🔍 Buscar platillo o ingrediente..." class="w-full bg-white p-3 rounded-2xl shadow-sm text-xs border border-gray-100 focus:outline-none focus:ring-2 focus:ring-bocaOrange">
+    </div>
+
+    <!-- Catálogo de Platillos Activos -->
+    <div class="p-4 grid grid-cols-2 gap-3" id="productos-grid">
+      <p class="text-xs text-gray-400 col-span-2 text-center py-8">Cargando el menú en tiempo real...</p>
+    </div>
+
+    <!-- Modal de Carrito y Checkout -->
+    <div id="modal-carrito" class="fixed inset-0 bg-black/50 z-30 hidden flex justify-center items-end">
+      <div class="bg-white w-full max-w-md rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto space-y-4">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-bold text-bocaDark text-sm">🛒 Tu Pedido BOCA2 360</h3>
+          <button onclick="toggleCarritoModal()" class="text-gray-400 font-bold text-lg">✕</button>
+        </div>
+
+        <div id="lista-carrito" class="space-y-2"></div>
+
+        <!-- Selección de Tipo de Entrega -->
+        <div class="border-t pt-3 space-y-3">
+          <h4 class="font-bold text-xs text-bocaDark">📋 Modalidad de Entrega</h4>
+          
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" id="btn-delivery" onclick="seleccionarModalidad('delivery')" class="p-2 text-center rounded-xl border border-bocaOrange bg-orange-50 text-bocaOrange font-bold text-xs transition">
+              🛵 Delivery
+            </button>
+            <button type="button" id="btn-pickup" onclick="seleccionarModalidad('pickup')" class="p-2 text-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs transition">
+              🛍️ Para Llevar
+            </button>
+            <button type="button" id="btn-mesa" onclick="seleccionarModalidad('mesa')" class="p-2 text-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs transition">
+              🍽️ En Mesa
+            </button>
+          </div>
+
+          <!-- Campos Dinámicos según Modalidad -->
+          <div class="space-y-2">
+            <input type="text" id="cliente-nombre" placeholder="Tu Nombre completo" class="w-full bg-gray-50 p-2.5 rounded-xl text-xs border focus:ring-1 focus:ring-bocaOrange outline-none">
+            
+            <!-- Campo para Delivery -->
+            <div id="campo-delivery" class="space-y-2">
+              <textarea id="cliente-direccion" rows="2" placeholder="Dirección exacta o referencia en León" class="w-full bg-gray-50 p-2.5 rounded-xl text-xs border focus:ring-1 focus:ring-bocaOrange outline-none"></textarea>
+              <button onclick="obtenerGPS()" class="w-full bg-emerald-50 text-emerald-700 text-xs font-bold p-2.5 rounded-xl border border-emerald-200 flex items-center justify-center gap-1">
+                📍 <span id="gps-status">Adjuntar mi Ubicación GPS actual</span>
+              </button>
+            </div>
+
+            <!-- Campo para En Mesa -->
+            <div id="campo-mesa" class="hidden">
+              <input type="number" id="cliente-num-mesa" placeholder="Número de Mesa" class="w-full bg-gray-50 p-2.5 rounded-xl text-xs border focus:ring-1 focus:ring-bocaOrange outline-none">
+            </div>
+
+            <!-- Campo para Para Llevar -->
+            <div id="campo-pickup" class="hidden">
+              <input type="text" id="cliente-hora-pickup" placeholder="¿A qué hora pasas a retirar? (ej. 1:30 PM)" class="w-full bg-gray-50 p-2.5 rounded-xl text-xs border focus:ring-1 focus:ring-bocaOrange outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- Selección de Forma de Pago -->
+        <div class="border-t pt-3 space-y-3">
+          <h4 class="font-bold text-xs text-bocaDark">💳 Forma de Pago</h4>
+          
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="btn-pago-efectivo" onclick="seleccionarFormaPago('efectivo')" class="p-2.5 text-center rounded-xl border border-bocaOrange bg-orange-50 text-bocaOrange font-bold text-xs transition flex items-center justify-center gap-1">
+              💵 Efectivo
+            </button>
+            <button type="button" id="btn-pago-billetera" onclick="seleccionarFormaPago('billetera')" class="p-2.5 text-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs transition flex items-center justify-center gap-1">
+              📱 Billetera Banpro
+            </button>
+          </div>
+
+          <!-- Opción de cambio para Efectivo -->
+          <div id="campo-monto-efectivo" class="space-y-1">
+            <input type="number" id="monto-efectivo" placeholder="¿Con cuánto vas a pagar? (ej. C$ 500) - Opcional" class="w-full bg-gray-50 p-2.5 rounded-xl text-xs border focus:ring-1 focus:ring-bocaOrange outline-none">
+            <p class="text-[10px] text-gray-400 px-1">Indícanos si necesitas cambio exacto.</p>
+          </div>
+
+          <!-- Mensaje para Billetera Móvil Banpro -->
+          <div id="campo-info-billetera" class="hidden bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl text-[11px] text-emerald-800">
+            <p class="font-bold">📱 Pago por Billetera Móvil Banpro</p>
+            <p class="mt-0.5 text-[10px] text-emerald-700">Te enviaremos el número de teléfono o código para realizar la transferencia de tu Billetera Móvil por WhatsApp.</p>
+          </div>
+        </div>
+
+        <button id="btn-confirmar-pedido" onclick="enviarAWhatsApp()" class="w-full bg-bocaOrange text-white p-3.5 rounded-2xl font-bold text-xs hover:bg-bocaOrangeDark transition shadow-md">
+          Confirmar y Enviar a WhatsApp 📱
+        </button>
+      </div>
+    </div>
+
+    <!-- Barra Flotante Carrito -->
+    <div class="fixed bottom-4 left-0 right-0 max-w-md mx-auto px-4 z-10">
+      <button onclick="toggleCarritoModal()" class="w-full bg-bocaOrange text-white p-3.5 rounded-2xl shadow-xl flex justify-between items-center font-bold hover:bg-bocaOrangeDark transition">
+        <span id="cart-badge" class="bg-bocaOrangeDark px-2.5 py-1 rounded-xl text-xs">0 Ítems</span>
+        <span class="text-xs">Ver Mi Pedido / Delivery</span>
+        <span id="cart-total" class="text-xs">C$ 0</span>
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    let menu = [];
+    let menuFiltradoActual = [];
+    let categoriaSeleccionada = "todos";
+    let carrito = {}; 
+    let ubicacionGPS = "";
+    let modalidadEntrega = "delivery"; 
+    let formaPago = "efectivo"; 
+
+    // Variables dinámicas de horario
+    let horaApertura = 7;
+    let horaCierre = 14;
+    let estaAbierto = false;
+
+    const URL_CONFIG_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdRcutUF-sUsdeeNZ-TBhsTf66mIYg6ufzYlPVeYV3LKWNCH8-OnYcVwtR2DV7cAiOsaN8a_yjxZ4a/pub?gid=299022696&single=true&output=csv";
+
+    function formatearHora12h(valor) {
+      let h = parseInt(valor, 10);
+      if (isNaN(h)) return valor;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return `${h12}:00 ${ampm}`;
+    }
+
+    async function cargarConfiguracionHorario() {
+      try {
+        const res = await fetch(`${URL_CONFIG_CSV}&t=${Date.now()}`);
+        if (res.ok) {
+          const textoCSV = await res.text();
+          const lineas = textoCSV.replace(/\r/g, '').split('\n').filter(l => l.trim().length > 0);
+
+          lineas.forEach(linea => {
+            const cols = parsearLineaCSV(linea);
+            if (cols.length >= 2) {
+              const parametro = cols[0].replace(/^"|"$/g, '').trim().toLowerCase();
+              const valor = cols[1].replace(/^"|"$/g, '').trim();
+
+              if (parametro.includes('apertura')) {
+                horaApertura = parseInt(valor, 10) || 7;
+              } else if (parametro.includes('cierre')) {
+                horaCierre = parseInt(valor, 10) || 14;
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Usando horario base por defecto:", e);
+      }
+    }
+
+    function verificarHorario() {
+      const ahora = new Date();
+      const horaActual = ahora.getHours();
+      const contenedorEstado = document.getElementById('estado-restaurante');
+      const contenedorHorarioRango = document.getElementById('texto-horario-rango');
+
+      if (horaActual >= horaApertura && horaActual < horaCierre) {
+        estaAbierto = true;
+        contenedorEstado.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
+        contenedorEstado.innerHTML = "🟢 Abierto Ahora";
+      } else {
+        estaAbierto = false;
+        contenedorEstado.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-200";
+        contenedorEstado.innerHTML = "🔴 Cerrado";
+      }
+
+      if (contenedorHorarioRango) {
+        const aperturaStr = formatearHora12h(horaApertura);
+        const cierreStr = formatearHora12h(horaCierre);
+        contenedorHorarioRango.innerText = `(${aperturaStr} - ${cierreStr})`;
+      }
+    }
+
+    function seleccionarModalidad(tipo) {
+      modalidadEntrega = tipo;
+      
+      const btnDelivery = document.getElementById('btn-delivery');
+      const btnPickup = document.getElementById('btn-pickup');
+      const btnMesa = document.getElementById('btn-mesa');
+
+      const campoDelivery = document.getElementById('campo-delivery');
+      const campoPickup = document.getElementById('campo-pickup');
+      const campoMesa = document.getElementById('campo-mesa');
+
+      [btnDelivery, btnPickup, btnMesa].forEach(btn => {
+        btn.className = "p-2 text-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs transition";
+      });
+
+      campoDelivery.classList.add('hidden');
+      campoPickup.classList.add('hidden');
+      campoMesa.classList.add('hidden');
+
+      if (tipo === 'delivery') {
+        btnDelivery.className = "p-2 text-center rounded-xl border border-bocaOrange bg-orange-50 text-bocaOrange font-bold text-xs transition";
+        campoDelivery.classList.remove('hidden');
+      } else if (tipo === 'pickup') {
+        btnPickup.className = "p-2 text-center rounded-xl border border-bocaOrange bg-orange-50 text-bocaOrange font-bold text-xs transition";
+        campoPickup.classList.remove('hidden');
+      } else if (tipo === 'mesa') {
+        btnMesa.className = "p-2 text-center rounded-xl border border-bocaOrange bg-orange-50 text-bocaOrange font-bold text-xs transition";
+        campoMesa.classList.remove('hidden');
+      }
+    }
+
+    function seleccionarFormaPago(tipo) {
+      formaPago = tipo;
+      
+      const btnEfectivo = document.getElementById('btn-pago-efectivo');
+      const btnBilletera = document.getElementById('btn-pago-billetera');
+
+      const campoEfectivo = document.getElementById('campo-monto-efectivo');
+      const campoInfoBilletera = document.getElementById('campo-info-billetera');
+
+      btnEfectivo.className = "p-2.5 text-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs transition flex items-center justify-center gap-1";
+      btnBilletera.className = "p-2.5 text-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-bold text-xs transition flex items-center justify-center gap-1";
+
+      if (tipo === 'efectivo') {
+        btnEfectivo.className = "p-2.5 text-center rounded-xl border border-bocaOrange bg-orange-50 text-bocaOrange font-bold text-xs transition flex items-center justify-center gap-1";
+        campoEfectivo.classList.remove('hidden');
+        campoInfoBilletera.classList.add('hidden');
+      } else if (tipo === 'billetera') {
+        btnBilletera.className = "p-2.5 text-center rounded-xl border border-bocaOrange bg-orange-50 text-bocaOrange font-bold text-xs transition flex items-center justify-center gap-1";
+        campoEfectivo.classList.add('hidden');
+        campoInfoBilletera.classList.remove('hidden');
+      }
+    }
+
+    function parsearLineaCSV(text) {
+      let p = '', c = '', r = [];
+      let q = false;
+      for (let i = 0; i < text.length; i++) {
+        c = text[i];
+        if (c === '"') {
+          q = !q;
+        } else if (c === ',' && !q) {
+          r.push(p.trim());
+          p = '';
+        } else {
+          p += c;
+        }
+      }
+      r.push(p.trim());
+      return r;
+    }
+
+    async function cargarDesdeGoogleSheets() {
+      const grid = document.getElementById('productos-grid');
+      grid.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-8">Cargando el menú en tiempo real...</p>';
+
+      await cargarConfiguracionHorario();
+
+      const sheetID = "2PACX-1vQdRcutUF-sUsdeeNZ-TBhsTf66mIYg6ufzYlPVeYV3LKWNCH8-OnYcVwtR2DV7cAiOsaN8a_yjxZ4a";
+      const timestamp = Date.now();
+
+      const URLs = [
+        `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&t=${timestamp}`,
+        `https://corsproxy.io/?` + encodeURIComponent(`https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&t=${timestamp}`),
+        `https://api.allorigins.win/raw?url=` + encodeURIComponent(`https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&t=${timestamp}`)
+      ];
+
+      let textoCSV = "";
+      let exito = false;
+
+      for (let url of URLs) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            textoCSV = await res.text();
+            if (textoCSV.includes(',')) {
+              exito = true;
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn("Fallo intento en:", url);
+        }
+      }
+
+      if (!exito) {
+        grid.innerHTML = `<p class="text-xs text-red-500 col-span-2 text-center py-8">Error al conectar con el menú en la nube.</p>`;
+        return;
+      }
+
+      try {
+        const lineas = textoCSV.replace(/\r/g, '').split('\n').filter(l => l.trim().length > 0);
+        if (lineas.length <= 1) {
+          grid.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-8">No hay datos en la hoja.</p>';
+          return;
+        }
+
+        const filas = lineas.slice(1);
+
+        menu = filas.map((f, index) => {
+          const col = parsearLineaCSV(f);
+          const limpiar = (txt) => txt ? txt.replace(/^"|"$/g, '').trim() : '';
+
+          const disponibleTexto = limpiar(col[6]).toLowerCase();
+          const promoTexto = limpiar(col[5]).toLowerCase();
+          const urlImagen = limpiar(col[7]);
+
+          return {
+            id: limpiar(col[0]) || String(index + 1),
+            nombre: limpiar(col[1]),
+            cat: limpiar(col[2]).toLowerCase(),
+            precio: parseFloat(limpiar(col[3])) || 0,
+            desc: limpiar(col[4]),
+            promo: (promoTexto === 'true' || promoTexto === 'si' || promoTexto === '1'),
+            disponible: (disponibleTexto === 'true' || disponibleTexto === 'si' || disponibleTexto === '1'),
+            img: urlImagen !== '' ? urlImagen : "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300"
+          };
+        }).filter(item => item.nombre !== "" && item.disponible);
+
+        menuFiltradoActual = menu;
+        verificarHorario();
+        renderProductos(menu);
+      } catch (errParsing) {
+        console.error("Error procesando CSV:", errParsing);
+        grid.innerHTML = `<p class="text-xs text-red-500 col-span-2 text-center py-8">Error en la estructura de los datos.</p>`;
+      }
+    }
+
+    function renderProductos(items) {
+      const grid = document.getElementById('productos-grid');
+      grid.innerHTML = '';
+
+      if(items.length === 0) {
+        grid.innerHTML = '<p class="text-xs text-gray-400 col-span-2 text-center py-8">No hay platillos disponibles en esta categoría.</p>';
+        return;
+      }
+
+      items.forEach(p => {
+        const cant = carrito[p.id] ? carrito[p.id].cantidad : 0;
+        grid.innerHTML += `
+          <div class="bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between overflow-hidden">
+            <div>
+              <div class="relative h-28 -mx-2.5 -mt-2.5 mb-2 overflow-hidden bg-gray-100">
+                <img src="${p.img}" alt="${p.nombre}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300'">
+                ${p.promo ? '<span class="absolute top-2 left-2 bg-bocaOrange text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow">PROMO</span>' : ''}
+              </div>
+              <h4 class="font-bold text-bocaDark text-xs leading-snug">${p.nombre}</h4>
+              <p class="text-[10px] text-gray-400 mt-0.5 line-clamp-2">${p.desc}</p>
+            </div>
+            <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-50">
+              <span class="font-black text-bocaDark text-xs">C$ ${p.precio}</span>
+              
+              <div id="control-cant-${p.id}">
+                ${renderBotonCantidad(p.id, cant)}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function renderBotonCantidad(id, cant) {
+      if (cant === 0) {
+        return `<button onclick="cambiarCantidad('${id}', 1)" class="bg-bocaOrange text-white w-7 h-7 rounded-full font-bold text-sm shadow flex items-center justify-center hover:bg-bocaOrangeDark">+</button>`;
+      } else {
+        return `
+          <div class="flex items-center bg-orange-50 rounded-full border border-orange-200 px-1 py-0.5 space-x-1 shadow-sm">
+            <button onclick="cambiarCantidad('${id}', -1)" class="w-5 h-5 bg-white text-bocaOrange rounded-full font-bold text-xs flex items-center justify-center shadow-xs hover:bg-orange-100">-</button>
+            <span class="text-xs font-black text-bocaOrange px-1">${cant}</span>
+            <button onclick="cambiarCantidad('${id}', 1)" class="w-5 h-5 bg-bocaOrange text-white rounded-full font-bold text-xs flex items-center justify-center shadow-xs hover:bg-bocaOrangeDark">+</button>
+          </div>
+        `;
+      }
+    }
+
+    function cambiarCantidad(id, cambio) {
+      const prod = menu.find(p => p.id == id);
+      if (!prod) return;
+
+      if (!carrito[id]) {
+        carrito[id] = { producto: prod, cantidad: 0 };
+      }
+
+      carrito[id].cantidad += cambio;
+
+      if (carrito[id].cantidad <= 0) {
+        delete carrito[id];
+      }
+
+      const contenedor = document.getElementById(`control-cant-${id}`);
+      if (contenedor) {
+        const cantActual = carrito[id] ? carrito[id].cantidad : 0;
+        contenedor.innerHTML = renderBotonCantidad(id, cantActual);
+      }
+
+      actualizarCarrito();
+    }
+
+    function actualizarCarrito() {
+      let totalItems = 0;
+      let totalPrecio = 0;
+
+      const lista = document.getElementById('lista-carrito');
+      lista.innerHTML = '';
+
+      Object.keys(carrito).forEach(id => {
+        const item = carrito[id];
+        totalItems += item.cantidad;
+        const subtotal = item.producto.precio * item.cantidad;
+        totalPrecio += subtotal;
+
+        lista.innerHTML += `
+          <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded-xl">
+            <div class="flex items-center gap-2">
+              <img src="${item.producto.img}" class="w-8 h-8 rounded-lg object-cover">
+              <div>
+                <p class="font-medium text-gray-800 leading-tight">${item.producto.nombre}</p>
+                <p class="text-[10px] text-gray-400">C$ ${item.producto.precio} x ${item.cantidad}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-bocaDark">C$ ${subtotal}</span>
+              <button onclick="cambiarCantidad('${id}', -${item.cantidad})" class="text-red-500 font-bold px-1">✕</button>
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById('cart-count').innerText = totalItems;
+      document.getElementById('cart-badge').innerText = `${totalItems} Ítems`;
+      document.getElementById('cart-total').innerText = `C$ ${totalPrecio}`;
+    }
+
+    function toggleCarritoModal() {
+      document.getElementById('modal-carrito').classList.toggle('hidden');
+    }
+
+    function obtenerGPS() {
+      if ("geolocation" in navigator) {
+        document.getElementById('gps-status').innerText = "Obteniendo ubicación...";
+        navigator.geolocation.getCurrentPosition(pos => {
+          ubicacionGPS = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+          document.getElementById('gps-status').innerText = "✅ Ubicación GPS Adjuntada";
+        }, () => {
+          alert("No se pudo obtener el GPS. Escribe tu dirección manualmente.");
+          document.getElementById('gps-status').innerText = "Adjuntar mi Ubicación GPS actual";
+        });
+      }
+    }
+
+    function filtrarProductos() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const filtrados = menuFiltradoActual.filter(p => p.nombre.toLowerCase().includes(query) || p.desc.toLowerCase().includes(query));
+      renderProductos(filtrados);
+    }
+
+    function filtrarCategoria(cat) {
+      categoriaSeleccionada = cat;
+      const botones = ['todos', 'desayuno', 'almuerzo', 'cena', 'promos'];
+
+      // Cambiar estilos activos e inactivos de los botones de categoría
+      botones.forEach(c => {
+        const btn = document.getElementById(`cat-${c}`);
+        if (btn) {
+          if (c === cat) {
+            btn.className = "bg-bocaOrange text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm whitespace-nowrap transition";
+          } else {
+            btn.className = "bg-white text-bocaDark px-3.5 py-2 rounded-xl text-xs font-bold border border-gray-100 whitespace-nowrap shadow-xs transition";
+          }
+        }
+      });
+
+      // Aplicar filtro al menú
+      if (cat === 'todos') {
+        menuFiltradoActual = menu;
+      } else if (cat === 'promos') {
+        menuFiltradoActual = menu.filter(p => p.promo);
+      } else {
+        menuFiltradoActual = menu.filter(p => p.cat.includes(cat));
+      }
+
+      // Si hay algo en la barra de búsqueda, respetar la búsqueda dentro de la categoría
+      filtrarProductos();
+    }
+
+    function enviarAWhatsApp() {
+      if (!estaAbierto) {
+        alert("En este momento el restaurante se encuentra CERRADO. Te atendemos en nuestro horario habitual.");
+        return;
+      }
+
+      const keys = Object.keys(carrito);
+      if (keys.length === 0) {
+        alert("Agrega platillos a tu carrito.");
+        return;
+      }
+
+      const nombre = document.getElementById('cliente-nombre').value.trim();
+      if (!nombre) {
+        alert("Por favor ingresa tu nombre.");
+        return;
+      }
+
+      let mensaje = `¡Hola BOCA2 360! 👋 Quisiera realizar un pedido:\n\n`;
+      mensaje += `👤 *Cliente:* ${nombre}\n`;
+
+      if (modalidadEntrega === 'delivery') {
+        const direccion = document.getElementById('cliente-direccion').value.trim();
+        if (!direccion) {
+          alert("Por favor ingresa tu dirección para el Delivery.");
+          return;
+        }
+        mensaje += `🛵 *Modalidad:* DELIVERY\n`;
+        mensaje += `🏡 *Dirección:* ${direccion}\n`;
+        if (ubicacionGPS) mensaje += `📍 *Ubicación GPS:* ${ubicacionGPS}\n`;
+      } else if (modalidadEntrega === 'pickup') {
+        const horaPickup = document.getElementById('cliente-hora-pickup').value.trim();
+        mensaje += `🛍️ *Modalidad:* PARA LLEVAR (Pick-up)\n`;
+        if (horaPickup) mensaje += `⏰ *Hora de retiro estimada:* ${horaPickup}\n`;
+      } else if (modalidadEntrega === 'mesa') {
+        const numMesa = document.getElementById('cliente-num-mesa').value.trim();
+        if (!numMesa) {
+          alert("Por favor indica el número de mesa.");
+          return;
+        }
+        mensaje += `🍽️ *Modalidad:* CONSUMO EN LOCAL\n`;
+        mensaje += `🪑 *Número de Mesa:* ${numMesa}\n`;
+      }
+
+      if (formaPago === 'efectivo') {
+        mensaje += `💳 *Forma de Pago:* EFECTIVO\n`;
+        const montoBillete = document.getElementById('monto-efectivo').value.trim();
+        if (montoBillete) {
+          mensaje += `💵 *Paga con:* C$ ${montoBillete}\n`;
+        }
+      } else if (formaPago === 'billetera') {
+        mensaje += `💳 *Forma of Pago:* BILLETERA MÓVIL BANPRO\n`;
+      }
+      
+      mensaje += `\n📋 *Detalle del Pedido:*\n`;
+      let total = 0;
+      let contador = 1;
+
+      keys.forEach(id => {
+        const item = carrito[id];
+        const subtotal = item.producto.precio * item.cantidad;
+        mensaje += `${contador}. ${item.producto.nombre} x${item.cantidad} - C$ ${subtotal}\n`;
+        total += subtotal;
+        contador++;
+      });
+
+      mensaje += `\n💰 *Total a Pagar:* C$ ${total}\n`;
+
+      if (formaPago === 'efectivo') {
+        const montoBilleteVal = parseFloat(document.getElementById('monto-efectivo').value.trim());
+        if (montoBilleteVal && montoBilleteVal > total) {
+          const cambio = montoBilleteVal - total;
+          mensaje += `🪙 *Cambio a entregar:* C$ ${cambio}\n`;
+        }
+      }
+
+      window.open(`https://wa.me/50589489747?text=${encodeURIComponent(mensaje)}`, '_blank');
+    }
+
+    // Inicializar app
+    cargarDesdeGoogleSheets();
+  </script>
+</body>
+</html>
